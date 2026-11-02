@@ -1,6 +1,6 @@
 {
   "name": "codex-workers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Explicitly delegate Claude Code tasks to Codex workers, with separate review and testing.",
   "author": { "name": "opit80" },
   "license": "MIT",

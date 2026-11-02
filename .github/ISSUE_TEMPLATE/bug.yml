@@ -18,10 +18,10 @@ body:
     validations:
       required: true
   - type: input
-    id: plugin-version
+    id: claude-version
     attributes:
-      label: Codex plugin version
-      description: Version of the OpenAI Codex plugin installed in Claude Code.
+      label: claude --version
+      description: Paste the output of this command.
     validations:
       required: true
   - type: input
