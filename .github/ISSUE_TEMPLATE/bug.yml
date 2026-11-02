@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a problem with codex-workers.
+body:
+  - type: markdown
+    attributes:
+      value: Remove paths, tokens, and e-mail addresses from pasted logs.
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and the steps to reproduce it.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What was expected?
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Codex plugin version
+      description: Version of the OpenAI Codex plugin installed in Claude Code.
+    validations:
+      required: true
+  - type: input
+    id: codex-version
+    attributes:
+      label: codex --version
+      description: Paste the output of this command.
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: Operating system and version.
+    validations:
+      required: true

@@ -1,0 +1,10 @@
+{
+  "name": "codex-workers",
+  "version": "0.1.0",
+  "description": "Explicitly delegate Claude Code tasks to Codex workers, with separate review and testing.",
+  "author": { "name": "opit80" },
+  "license": "MIT",
+  "repository": "https://github.com/opit80/codex-workers",
+  "homepage": "https://github.com/opit80/codex-workers",
+  "keywords": ["claude-code", "codex", "orchestration", "workers", "delegation"]
+}

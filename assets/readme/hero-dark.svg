@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="hero-title hero-desc">
+  <title id="hero-title">codex-workers</title>
+  <desc id="hero-desc">Claude plans. Codex workers do the work. A brief splits into parallel worker lanes, merges into a separate review point, and ends in one report.</desc>
+  <g id="identity" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="64" y="166" fill="#e6edf3" font-size="72" font-weight="650" letter-spacing="-0.01em">codex-workers</text>
+    <text x="68" y="214" fill="#8b949e" font-size="24">Claude plans. Codex workers do the work.</text>
+  </g>
+  <g id="relay" fill="none" stroke-width="2.5" stroke-linejoin="miter">
+    <path d="M748 180 H786 V116 H856 M786 180 H856 M786 180 V244 H856 M876 116 H968 V180 H1004 M876 180 H968 M876 244 H968 V180 M1028 180 H1116" stroke="#3fb950"/>
+    <g stroke="#e6edf3">
+      <rect x="724" y="168" width="24" height="24" rx="2"/>
+      <rect x="856" y="106" width="20" height="20" rx="2"/>
+      <rect x="856" y="170" width="20" height="20" rx="2"/>
+      <rect x="856" y="234" width="20" height="20" rx="2"/>
+      <rect x="1004" y="168" width="24" height="24" rx="2"/>
+    </g>
+    <rect x="1116" y="168" width="24" height="24" rx="2" fill="#3fb950" stroke="#3fb950"/>
+  </g>
+  <g id="relay-labels" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" fill="#8b949e" text-anchor="middle">
+    <text x="736" y="144">brief</text>
+    <text x="1016" y="144">review</text>
+    <text x="1128" y="144">report</text>
+  </g>
+</svg>

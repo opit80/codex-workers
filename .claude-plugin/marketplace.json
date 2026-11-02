@@ -1,0 +1,11 @@
+{
+  "name": "codex-workers",
+  "owner": { "name": "opit80" },
+  "plugins": [
+    {
+      "name": "codex-workers",
+      "source": "./",
+      "description": "Explicitly delegate Claude Code tasks to Codex workers, with separate review and testing."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+auth.json
+.env*
+.codex/
+node_modules/
+.DS_Store
+*.log

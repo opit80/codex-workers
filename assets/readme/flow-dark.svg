@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="580" viewBox="0 0 1200 580" role="img" aria-labelledby="flow-title flow-desc">
+  <title id="flow-title">From one task to one report</title>
+  <desc id="flow-desc">Claude Code reads project rules and splits the task between two parallel Codex workers that write code. A separate review worker reviews and runs tests without changing source. One report lists what changed, results, and open items. Follow-up resumes the same worker thread.</desc>
+  <g id="forward-relay" fill="none" stroke="#3fb950" stroke-width="2.5" stroke-linejoin="miter">
+    <path d="M166 280 H260 M260 280 L334 180 H440 M260 280 L334 380 H440 M460 180 H548 L634 280 H740 M460 380 H548 L634 280 M764 280 H1004"/>
+    <path d="M911 274 L917 280 L911 286"/>
+  </g>
+  <g id="follow-up" fill="none" stroke="#8b949e" stroke-width="2">
+    <path d="M1028 280 H1148 V500 H450 V392" stroke-dasharray="6 7"/>
+    <path d="M444 400 L450 392 L456 400"/>
+  </g>
+  <g id="relay-nodes" fill="none" stroke="#e6edf3" stroke-width="2.5">
+    <rect x="142" y="268" width="24" height="24" rx="2"/>
+    <rect x="440" y="170" width="20" height="20" rx="2"/>
+    <rect x="440" y="370" width="20" height="20" rx="2"/>
+    <rect x="740" y="268" width="24" height="24" rx="2"/>
+    <rect x="1004" y="268" width="24" height="24" rx="2" fill="#3fb950" stroke="#3fb950"/>
+  </g>
+  <g id="stage-labels" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" text-anchor="middle">
+    <g fill="#e6edf3" font-size="22" font-weight="600">
+      <text x="154" y="322">Claude Code</text>
+      <text x="450" y="114">Codex worker</text>
+      <text x="450" y="314">Codex worker</text>
+      <text x="752" y="322">Review worker</text>
+      <text x="1016" y="322">One report</text>
+    </g>
+    <g fill="#8b949e" font-size="18">
+      <text x="154" y="358">reads project rules,</text>
+      <text x="154" y="386">splits the task</text>
+      <text x="450" y="144">writes code</text>
+      <text x="450" y="344">writes code</text>
+      <text x="752" y="358">reviews, runs tests,</text>
+      <text x="752" y="386">changes no source</text>
+      <text x="1016" y="358">what changed,</text>
+      <text x="1016" y="386">results, open items</text>
+      <text x="800" y="548">follow-up resumes the same thread</text>
+    </g>
+  </g>
+</svg>
