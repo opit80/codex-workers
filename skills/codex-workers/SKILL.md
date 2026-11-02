@@ -1,15 +1,14 @@
 ---
 name: codex-workers
-description: Act as an orchestrator and delegate work to Codex workers only when the user explicitly invokes this skill.
+description: Claude Code plans and reports; Codex workers write, review and test.
 disable-model-invocation: true
 argument-hint: <task to perform>
 ---
 
 # Orchestrator + Codex workers
 
-Any agent reading this skill, regardless of model or session, is the **orchestrator**. Do not do the work yourself:
-split it into packages for Codex workers (default: the newest GPT Sol model, reasoning high), collect the results, and return one report.
-The task or user may name another model. Use any relevant task context already present in the conversation.
+You are the **orchestrator**. Do not do the work yourself: split it into packages for Codex workers, collect
+their results, and return one report. Use relevant context already in the conversation.
 
 ## Task
 
@@ -19,29 +18,24 @@ $ARGUMENTS
 
 - Read and follow the working directory's rules first (AGENTS.md / CLAUDE.md). If those rules forbid delegation
   to another model or require a particular model, **do not start any workers**; report this and stop.
-- Codex workers read `AGENTS.md` but not `CLAUDE.md`. If `CLAUDE.md` holds rules and does not reference
-  `AGENTS.md` (for example with `@AGENTS.md`), tell the user and offer to move those rules into `AGENTS.md`,
-  leaving `@AGENTS.md` in `CLAUDE.md`. Move them only if the user agrees; otherwise copy the rules that apply
-  into each brief.
-- Explore only enough to plan, then split the work into independent packages.
-- **Do not write code, review diffs, or run tests yourself**: assign all of them to workers. Once the writing
-  workers finish, start one separate worker for review and tests: pass `--write` (builds and tests write files),
-  and include "do not change source" in its brief. The only exception: run the project's fastest test command
-  yourself once at the end. You may also run `git status --short` to list changed files, and compare
-  `git rev-parse HEAD` with the value from step 0 to confirm nothing was committed (if it changed, report it;
-  do not reset). Do not read diffs.
-- Be efficient: explore only enough to plan, and put your findings in the brief so workers do not repeat the search.
-  Give a small task to one worker instead of splitting it.
-- If a report is incomplete or contradictory, send follow-up instructions to the same worker instead of starting a new one.
+- Codex workers read `AGENTS.md`, not `CLAUDE.md`. If `CLAUDE.md` has rules that are not in `AGENTS.md`, tell
+  the user and offer to move them into `AGENTS.md`, leaving `@AGENTS.md` in `CLAUDE.md`. Move them only if the
+  user agrees; otherwise copy the applicable ones into each brief.
+- Explore only enough to plan, and put your findings in the briefs so workers do not repeat the search. Give a
+  small task to one worker; split only into truly independent packages.
+- **Do not write code, read diffs, or run tests yourself.** When the writing workers finish, start one separate
+  review/test worker with `--write`. Exceptions: run the project's fastest test command once at the end, run
+  `git status --short`, and compare `git rev-parse HEAD` with step 0 (if it changed, report it; do not reset).
+- If a report is incomplete or contradictory, send follow-up instructions to the same worker (step 5).
 - No external actions (push, deploy, remote databases, PRs) or commits unless the task explicitly requests them.
-- Do not end this session or run `/clear` while workers are running: the session-end hook kills its own jobs
-  and deletes their records and logs.
+- Never use `--dangerously-bypass-approvals-and-sandbox` or any flag that disables the sandbox, and do not
+  enable the plugin's review gate (`setup --enable-review-gate`).
+- Do not end the session or run `/clear` while workers run: the session-end hook kills their jobs and deletes
+  their records and logs.
 
 ## Commands
 
-Prerequisites: Codex CLI must be logged in, and the OpenAI Codex plugin must be installed in Claude Code.
-
-At the start of every Bash call, resolve the plugin path and set the worker environment. Codex uses your default login, or the profile in `CODEX_HOME` if you have exported it.
+Shell variables do not persist between Bash calls. Start every Bash call that runs `node` or `codex` with:
 
 ```bash
 P=$(ls -d ~/.claude/plugins/cache/openai-codex/codex/*/ | sort -V | tail -1)
@@ -49,89 +43,66 @@ export CODEX_COMPANION_APP_SERVER_ENDPOINT=unix:/nonexistent/no-broker.sock
 node -v >/dev/null 2>&1 || export PATH="$(ls -d ~/.nvm/versions/node/*/bin | sort -V | tail -1):$PATH"
 ```
 
-If `~/.claude/plugins/cache/openai-codex/codex/*/` matches nothing, stop and tell the user to install the OpenAI Codex plugin.
+If `P` is empty, stop and tell the user to install the OpenAI Codex plugin. Keep the
+`CODEX_COMPANION_APP_SERVER_ENDPOINT` line: it gives each job its own Codex process instead of a shared broker
+that another session can shut down. It relies on plugin 1.0.6 internals; if `$P` is another version, say so.
 
-Do not remove the `CODEX_COMPANION_APP_SERVER_ENDPOINT` line: it runs workers without the broker, so each job
-starts its own Codex process. This avoids attaching workers to a broker already open in the directory,
-another session's shutdown killing a worker, and lingering thread locks. This depends on internal plugin
-behaviour and was tested on plugin 1.0.6: if `$P` points to another version, mention it in your report.
-
-The last line falls back to Node from nvm if the system `node` is broken (for example, a missing library after a package update).
-
-Job records are scoped to the `--cwd` directory: if you start a job with `--cwd`, pass the same `--cwd` to
-`status`/`result`/`cancel`, otherwise they report "No job found".
-
-The state file has no lock; with parallel jobs, a record may briefly disappear or be incomplete:
-
-- If `status` reports "No job found", ask once more after 3 seconds. Do not restart the job.
-- "No job found" from `result` may also mean the job is still running; check `status` first.
+Job records are scoped to `--cwd`: pass the same `--cwd` to `status`/`result`/`cancel`. The state file has no
+lock, so with parallel jobs a record can briefly vanish: on "No job found", wait 3 seconds and run `status`
+once more. Never restart the job. `result` also says "No job found" while a job is still running, so check `status` first.
 
 0. **Before the first worker:**
-   - Pick the model. Unless the task or user names one, use the newest GPT Sol model in this Codex login's
-     catalog. Run this once and record the slug it prints as `<model>`; if it prints nothing, use `gpt-6.1-sol`
-     and say so in the report:
+   - Unless the task or user names a model, use the newest GPT Sol model in this Codex login's
+     catalog: run this once and use the slug it prints as `<model>`; if it prints nothing, use `gpt-6.1-sol`
+     and say so in the report. Use `high` as `<effort>` unless the task or user names another effort.
      ```bash
      codex debug models 2>/dev/null | grep -oE '"slug": *"gpt-[0-9.]+-sol"' | grep -oE 'gpt-[0-9.]+-sol' | sort -V | tail -1
      ```
-   - Record the starting point: run `git rev-parse HEAD` in every directory a worker will write to (for a
-     worktree, right after `git worktree add`). Skip a directory that is not a git repository and say so.
-1. **Write the brief to a file** (a temporary directory, for example `D=$(mktemp -d)`; use an absolute path).
-   Shell state does not persist between separate Bash calls. Record the directory's absolute path in your notes
-   and use it in later commands; reassign `D` to that path in every later Bash call that uses it.
-   Do not put long text on the command line.
-2. **Start the worker in the background**; it immediately returns a job id:
+   - Run `git rev-parse HEAD` in every directory a worker will write to (for a worktree, right after
+     `git worktree add`). Skip a directory that is not a git repository and say so.
+1. **Write each brief to a file** in a temp dir (`D=$(mktemp -d)`). Note its absolute path and set `D` to it
+   again in every later Bash call that uses it.
+2. **Start each worker in the background**; start all independent workers before waiting on any:
    ```bash
-   node "$P/scripts/codex-companion.mjs" task --background --model <model> --effort high [--write] [--cwd <dir>] --prompt-file "<brief>"
+   node "$P/scripts/codex-companion.mjs" task --background --model <model> --effort <effort> [--write] [--cwd <dir>] --prompt-file "<brief>"
    ```
-   The output is a sentence containing the job id (`task-...`); take the id from it. It also mentions `/codex:status`: ignore that and use the `node ... status` and `node ... result` commands below.
-   Pass `--write` to a worker that changes files or runs builds/tests; a worker that only reads uses a read-only sandbox.
-   Network access is disabled by default for a `--write` worker: install any required dependencies before starting it.
-3. **Wait for completion.** In Claude Code, run in the background (`run_in_background`) and wait for the completion
-   notification without polling in between. If background execution is unavailable or not allowed, set the Bash timeout to 600000;
-   if it does not finish, repeat the same command:
+   It prints the job id (`task-...`); ignore its `/codex:status` hint and use the commands below. Pass `--write`
+   to any worker that changes files or runs builds/tests; others get a read-only sandbox. `--write` workers have
+   no network: install dependencies before starting them.
+3. **Wait** with `run_in_background`, without polling (if background is unavailable or not allowed, set the Bash timeout to
+   600000). If it returns while the job is still running, run it again:
    ```bash
    node "$P/scripts/codex-companion.mjs" status <job-id> [--cwd <dir>] --wait --timeout-ms 540000
    ```
 4. **Get the report:** `node "$P/scripts/codex-companion.mjs" result <job-id> [--cwd <dir>]`
-5. **Continue the same worker** (its context is preserved): use the thread id (`Codex session ID`) from the result
-   and `run_in_background`. Write the follow-up instructions to `$D/followup-<thread_id>.md` first. Run in the
-   worker's directory: the `--cwd` it was started with (the worktree path for a worktree worker), or the directory
-   you started it from; `codex exec resume` has no directory option.
+5. **Continue the same worker** (context preserved) with the `Codex session ID` from its result as
+   `<thread_id>`, using `run_in_background`. Write the instructions to `$D/followup-<thread_id>.md` first.
+   `codex exec resume` has no directory option, so `cd` to the worker's `--cwd` (or where you started it):
    ```bash
    cd "<worker dir>" || exit 1
    D="<absolute temp dir>"
-   codex exec resume <thread_id> --skip-git-repo-check -m <model> -c model_reasoning_effort="high" -o "$D/resume-<thread_id>.md" - < "$D/followup-<thread_id>.md" > "$D/resume-<thread_id>.log" 2>&1
+   codex exec resume <thread_id> --skip-git-repo-check -m <model> -c model_reasoning_effort="<effort>" -o "$D/resume-<thread_id>.md" - < "$D/followup-<thread_id>.md" > "$D/resume-<thread_id>.log" 2>&1
    ```
-   If it needs to write, add `-c sandbox_mode="workspace-write"`. When it finishes, read `$D/resume-<thread_id>.md`;
-   if the exit code is not 0, check the last lines of `$D/resume-<thread_id>.log`. Do not use `--resume-last`: a
-   partial record could select another worker. If you get "already has an active writer", that thread is running
-   in another process; wait for it to finish, then retry.
+   For a writing worker add `-c sandbox_mode="workspace-write"`. Read `$D/resume-<thread_id>.md`; on a non-zero
+   exit, check the end of the `.log`. Never use `--resume-last` or `--last`: they can pick another worker's
+   thread. "already has an active writer" means the thread is still running elsewhere: wait, then retry.
 6. **Stop a stuck job:** `node "$P/scripts/codex-companion.mjs" cancel <job-id> [--cwd <dir>]`
-7. **Identify a dead job:** if `status --wait` times out twice or returns an empty state, run the following alone,
-   as a separate command (other text on the same line can make it match its own shell):
-   `pgrep -f "[t]ask-worker .*--job-id <job-id>"`. If there is output, keep waiting. If there is no output, the worker
-   is dead: use `cancel`, then `result` to get its thread id, and resume with step 5 if needed.
+7. **Dead job?** If `status --wait` times out twice or returns an empty state, run this as a command on its
+   own: `pgrep -f "[t]ask-worker .*--job-id <job-id>"`. Output: keep waiting. No output: the worker died;
+   `cancel`, then `result` for its thread id, and resume with step 5 if needed.
 
-## When the usage limit is hit
+## Usage limit
 
-- Detect `usage limit` (for example, "You've hit your usage limit ... try again at 7:04 AM") or `429` in
-  `status`, `result`, or `exec` output.
-- Stop attempts for the affected workers. Do not retry in a loop and do not send probe requests.
-- Report which workers stopped, their thread ids, and the reset time from the message. If no reset time is
-  provided, say so instead of guessing.
-- After the reset, continue each affected worker through Commands step 5 with its own thread id and the extra
-  instruction "Continue from where you left off." For a writing worker, include `-c sandbox_mode="workspace-write"`.
+On `usage limit` (e.g. "You've hit your usage limit ... try again at 7:04 AM") or `429` in any output, stop the
+affected workers: no retry loops, no probe requests. Report their thread ids and the reset time from the
+message (or that none was given). After the reset, resume each with step 5 and "Continue from where you left off."
 
 ## Parallel workers
 
-- Start independent packages with `--background` without waiting between starts, then wait for each with `status --wait`.
-- **Two writing workers must never touch the same file.** The plugin has no protection for this, and other Claude
-  sessions cannot see your plan. If file sets overlap, or another session is writing in the same repository,
-  give each writing worker its own worktree: `git worktree add ../<repo>-wt-<name> -b work/<name>`, and point `--cwd`
-  to that directory. No commits in worktrees either: changes remain uncommitted in the directory and do not
-  appear on the branch. Do not merge branches; report each worktree's directory path and branch
-  (committing and merging are the user's decision).
-- Start only as many workers as there are truly independent packages.
+**Two writing workers must never touch the same file**; the plugin does not prevent it and other Claude sessions
+cannot see your plan. If file sets overlap, or another session is writing in the same repository, give each
+writing worker its own worktree (`git worktree add ../<repo>-wt-<name> -b work/<name>`) and point `--cwd` to it.
+Worktree changes stay uncommitted and off the branch; do not commit or merge.
 
 ## Brief template
 
@@ -144,14 +115,8 @@ Workers cannot see you or this task; each brief must stand on its own:
 5. **Done when:** for example, the project's test and build commands pass.
 6. **Report format:** changed files, commands run and their results, open questions/risks. Keep it short. State the language the report must be written in.
 
-Add to the review worker's brief: "Inspect changes with `git status --short -- <paths>` and `git diff -- <paths>`;
-read `??` files directly. Do not use `git add`."
-
-## Prohibitions
-
-- Do not use `--dangerously-bypass-approvals-and-sandbox` or any other flag that disables the sandbox.
-- Do not enable the plugin's review gate (`setup --enable-review-gate`).
-- Use the model from step 0 and `high` effort unless the task or user names others.
+Add to the review/test worker's brief: "Do not change source. Inspect changes with `git status --short -- <paths>`
+and `git diff -- <paths>`; read `??` files directly. Do not use `git add`."
 
 ## Your final report (in the user's language, short)
 

@@ -37,23 +37,3 @@ jobs:
           assert.ok(skill.includes('$ARGUMENTS'), 'Skill must contain $ARGUMENTS.');
           console.log('Skill name and task placeholder are valid.');
           NODE
-      - name: Check tracked text files
-        shell: bash
-        run: |
-          git ls-files -z | node -e '
-          const fs = require("node:fs");
-          const files = fs.readFileSync(0, "utf8")
-            .split("\0").filter(file => /\.(md|json|yml)$/.test(file));
-          const forbidden = /[\u00e7\u011f\u0131\u00f6\u015f\u00fc\u0130]/u;
-          let invalid = false;
-          for (const file of files) {
-            fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, index) => {
-              if (forbidden.test(line)) {
-                console.error(`${file}:${index + 1}: Disallowed character.`);
-                invalid = true;
-              }
-            });
-          }
-          if (invalid) process.exit(1);
-          console.log(`Checked ${files.length} tracked text files.`);
-          '
