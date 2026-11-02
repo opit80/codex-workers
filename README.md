@@ -1,9 +1,9 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.svg">
-  <img alt="codex-workers: Claude Code orchestrates, Codex workers write, review and test" src="assets/readme/hero-light.svg" width="100%">
-</picture>
-
-# codex-workers
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/hero-dark.svg">
+    <img alt="codex-workers: Claude Code orchestrates, Codex workers write, review and test" src="assets/readme/hero-light.svg" width="100%">
+  </picture>
+</h1>
 
 A Claude Code plugin where Claude Code orchestrates and Codex workers write code, review changes, and run tests.
 
