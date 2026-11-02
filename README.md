@@ -42,6 +42,7 @@ Manual installation (the same requirements apply):
 
 ```bash
 git clone https://github.com/opit80/codex-workers.git
+mkdir -p ~/.claude/skills
 cp -r codex-workers/skills/codex-workers ~/.claude/skills/
 ```
 

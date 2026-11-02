@@ -23,7 +23,7 @@ $ARGUMENTS
 - **Do not write code, review diffs, or run tests yourself**: assign all of them to workers. Once the writing
   workers finish, start one separate worker for review and tests: pass `--write` (builds and tests write files),
   and include "do not change source" in its brief. The only exception: run the project's fastest test command
-  yourself once at the end. You may also run `git status --short` to list changed files and confirm nothing was committed; do not read diffs.
+  yourself once at the end. You may also run `git status --short` to list changed files, and compare `git rev-parse HEAD` with the value you recorded before starting to confirm nothing was committed; do not read diffs.
 - Be efficient: explore only enough to plan, and put your findings in the brief so workers do not repeat the search.
   Give a small task to one worker instead of splitting it.
 - If a report is incomplete or contradictory, send follow-up instructions to the same worker instead of starting a new one.
