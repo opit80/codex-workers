@@ -8,7 +8,7 @@ argument-hint: <task to perform>
 # Orchestrator + Codex workers
 
 Any agent reading this skill, regardless of model or session, is the **orchestrator**. Do not do the work yourself:
-split it into packages for Codex workers (default: gpt-6.1-sol, reasoning high), collect the results, and return one report.
+split it into packages for Codex workers (default: the newest GPT Sol model, reasoning high), collect the results, and return one report.
 The task or user may name another model. Use any relevant task context already present in the conversation.
 
 ## Task
@@ -19,11 +19,17 @@ $ARGUMENTS
 
 - Read and follow the working directory's rules first (AGENTS.md / CLAUDE.md). If those rules forbid delegation
   to another model or require a particular model, **do not start any workers**; report this and stop.
+- Codex workers read `AGENTS.md` but not `CLAUDE.md`. If `CLAUDE.md` holds rules and does not reference
+  `AGENTS.md` (for example with `@AGENTS.md`), tell the user and offer to move those rules into `AGENTS.md`,
+  leaving `@AGENTS.md` in `CLAUDE.md`. Move them only if the user agrees; otherwise copy the rules that apply
+  into each brief.
 - Explore only enough to plan, then split the work into independent packages.
 - **Do not write code, review diffs, or run tests yourself**: assign all of them to workers. Once the writing
   workers finish, start one separate worker for review and tests: pass `--write` (builds and tests write files),
   and include "do not change source" in its brief. The only exception: run the project's fastest test command
-  yourself once at the end. You may also run `git status --short` to list changed files, and compare `git rev-parse HEAD` with the value you recorded before starting to confirm nothing was committed; do not read diffs.
+  yourself once at the end. You may also run `git status --short` to list changed files, and compare
+  `git rev-parse HEAD` with the value from step 0 to confirm nothing was committed (if it changed, report it;
+  do not reset). Do not read diffs.
 - Be efficient: explore only enough to plan, and put your findings in the brief so workers do not repeat the search.
   Give a small task to one worker instead of splitting it.
 - If a report is incomplete or contradictory, send follow-up instructions to the same worker instead of starting a new one.
@@ -60,14 +66,22 @@ The state file has no lock; with parallel jobs, a record may briefly disappear o
 - If `status` reports "No job found", ask once more after 3 seconds. Do not restart the job.
 - "No job found" from `result` may also mean the job is still running; check `status` first.
 
-
+0. **Before the first worker:**
+   - Pick the model. Unless the task or user names one, use the newest GPT Sol model in this Codex login's
+     catalog. Run this once and record the slug it prints as `<model>`; if it prints nothing, use `gpt-6.1-sol`
+     and say so in the report:
+     ```bash
+     codex debug models 2>/dev/null | grep -oE '"slug": *"gpt-[0-9.]+-sol"' | grep -oE 'gpt-[0-9.]+-sol' | sort -V | tail -1
+     ```
+   - Record the starting point: run `git rev-parse HEAD` in every directory a worker will write to (for a
+     worktree, right after `git worktree add`). Skip a directory that is not a git repository and say so.
 1. **Write the brief to a file** (a temporary directory, for example `D=$(mktemp -d)`; use an absolute path).
    Shell state does not persist between separate Bash calls. Record the directory's absolute path in your notes
    and use it in later commands; reassign `D` to that path in every later Bash call that uses it.
    Do not put long text on the command line.
 2. **Start the worker in the background**; it immediately returns a job id:
    ```bash
-   node "$P/scripts/codex-companion.mjs" task --background --model gpt-6.1-sol --effort high [--write] [--cwd <dir>] --prompt-file "<brief>"
+   node "$P/scripts/codex-companion.mjs" task --background --model <model> --effort high [--write] [--cwd <dir>] --prompt-file "<brief>"
    ```
    The output is a sentence containing the job id (`task-...`); take the id from it. It also mentions `/codex:status`: ignore that and use the `node ... status` and `node ... result` commands below.
    Pass `--write` to a worker that changes files or runs builds/tests; a worker that only reads uses a read-only sandbox.
@@ -79,16 +93,19 @@ The state file has no lock; with parallel jobs, a record may briefly disappear o
    node "$P/scripts/codex-companion.mjs" status <job-id> [--cwd <dir>] --wait --timeout-ms 540000
    ```
 4. **Get the report:** `node "$P/scripts/codex-companion.mjs" result <job-id> [--cwd <dir>]`
-5. **Continue the same worker** (its context is preserved): use the thread id (`Codex session ID`) from the result,
-   run in the worker's directory, and use `run_in_background`. Replace `<absolute temp dir>` with the recorded path:
+5. **Continue the same worker** (its context is preserved): use the thread id (`Codex session ID`) from the result
+   and `run_in_background`. Write the follow-up instructions to `$D/followup-<thread_id>.md` first. Run in the
+   worker's directory: the `--cwd` it was started with (the worktree path for a worktree worker), or the directory
+   you started it from; `codex exec resume` has no directory option.
    ```bash
+   cd "<worker dir>" || exit 1
    D="<absolute temp dir>"
-   codex exec resume <thread_id> --skip-git-repo-check -m gpt-6.1-sol -c model_reasoning_effort="high" -o "$D/last.md" "<follow-up instructions>" < /dev/null > "$D/resume.log" 2>&1
+   codex exec resume <thread_id> --skip-git-repo-check -m <model> -c model_reasoning_effort="high" -o "$D/resume-<thread_id>.md" - < "$D/followup-<thread_id>.md" > "$D/resume-<thread_id>.log" 2>&1
    ```
-   If it needs to write, add `-c sandbox_mode="workspace-write"`. When it finishes, read `$D/last.md`; if the exit
-   code is not 0, check the last lines of `$D/resume.log`. Do not use `--resume-last`: a partial record could select
-   another worker. If you get "already has an active writer", that thread is running in another process; wait
-   for it to finish, then retry.
+   If it needs to write, add `-c sandbox_mode="workspace-write"`. When it finishes, read `$D/resume-<thread_id>.md`;
+   if the exit code is not 0, check the last lines of `$D/resume-<thread_id>.log`. Do not use `--resume-last`: a
+   partial record could select another worker. If you get "already has an active writer", that thread is running
+   in another process; wait for it to finish, then retry.
 6. **Stop a stuck job:** `node "$P/scripts/codex-companion.mjs" cancel <job-id> [--cwd <dir>]`
 7. **Identify a dead job:** if `status --wait` times out twice or returns an empty state, run the following alone,
    as a separate command (other text on the same line can make it match its own shell):
@@ -123,7 +140,7 @@ Workers cannot see you or this task; each brief must stand on its own:
 1. **Goal:** what to do and why.
 2. **Scope:** files/directories to touch and those to leave alone.
 3. **Context:** facts you already know that the worker does not need to rediscover (file:line).
-4. **Rules:** the working directory's AGENTS.md applies; no external actions or commits.
+4. **Rules:** the project's `AGENTS.md` rules apply, plus any `CLAUDE.md` rules you copied in; no external actions or commits.
 5. **Done when:** for example, the project's test and build commands pass.
 6. **Report format:** changed files, commands run and their results, open questions/risks. Keep it short. State the language the report must be written in.
 
@@ -134,7 +151,7 @@ read `??` files directly. Do not use `git add`."
 
 - Do not use `--dangerously-bypass-approvals-and-sandbox` or any other flag that disables the sandbox.
 - Do not enable the plugin's review gate (`setup --enable-review-gate`).
-- Do not leave the default model/effort unless the task says so.
+- Use the model from step 0 and `high` effort unless the task or user names others.
 
 ## Your final report (in the user's language, short)
 

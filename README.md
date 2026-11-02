@@ -67,7 +67,7 @@ Example:
 ```
 
 The skill runs only when explicitly invoked (`disable-model-invocation: true`).
-The default worker model is `gpt-6.1-sol` with `high` reasoning effort; name another model or effort in the task if needed.
+The default worker model is the newest GPT Sol model in your Codex model catalog (currently `gpt-6.1-sol`) with `high` reasoning effort; name another model or effort in the task if needed.
 
 The default Codex login is used; you may export `CODEX_HOME` yourself to use a separate Codex profile.
 
@@ -105,7 +105,7 @@ Open items: invalid input (negative page, page 0, size 0) is still unvalidated a
   <img alt="Read project rules, brief Codex writing workers, review and test with a separate worker, then run a final test and report" src="assets/readme/flow-light.svg" width="100%">
 </picture>
 
-1. The orchestrator reads project rules first and stops if they forbid delegation or require a particular model.
+1. The orchestrator reads project rules first and stops if they forbid delegation or require a particular model. Because Codex reads `AGENTS.md` but not `CLAUDE.md`, it offers to move rules from a `CLAUDE.md` that does not reference `AGENTS.md`.
 2. It briefs Codex workers and assigns independent work, using separate worktrees when needed to avoid file conflicts.
 3. After writing finishes, a separate worker reviews the changes and runs tests with instructions not to change source.
 4. The orchestrator runs the project's fastest test once and reports results in the user's language.
@@ -128,7 +128,7 @@ A short final report:
   This relies on internal plugin behaviour that may break on updates; the orchestrator reports a plugin version mismatch.
 - The skill relies on the internal plugin cache path `~/.claude/plugins/cache/openai-codex/codex/` and script `scripts/codex-companion.mjs`.
 - macOS and Windows are not tested, and the commands assume `bash`.
-- The default model `gpt-6.1-sol` must be available on your Codex plan. Otherwise, name another model in the task or edit `skills/codex-workers/SKILL.md`.
+- The model is picked with `codex debug models`, a Codex debugging command that may change; if it returns nothing, the skill falls back to `gpt-6.1-sol`. The model must be available on your Codex plan; otherwise name another model in the task.
 - Workers use your own Codex quota. On usage limits, the workflow stops the affected workers and reports their thread ids
   and the reset time, or states that no reset time was provided. It does not switch accounts, retry in a loop, or send probe requests.
   It does not wake itself: after the reset, ask it to continue, and it resumes the same threads.
