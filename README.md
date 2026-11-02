@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-A Claude Code plugin where Claude Code orchestrates and Codex workers write code, review changes, and run tests.
+A Claude Code plugin where Claude Code orchestrates and Codex workers write code, review changes, and run tests. You stay in Claude Code while the coding work runs on your Codex quota.
 
 This is an independent community project, not affiliated with Anthropic or OpenAI.
 
@@ -27,7 +27,7 @@ The orchestrator is instructed not to commit, push or deploy unless you ask, and
 
 ## Requirements
 
-- Codex CLI logged in and on `PATH`. No other plugin is needed.
+- [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`) logged in and on `PATH`. No other plugin is needed.
 - `bash`, `git`, and `sort -V` for the skill's commands.
 
 ## Install
